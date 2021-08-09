@@ -18,7 +18,7 @@ import com.aa.fitview.databinding.FragmentItemBinding
  * TODO: Replace the implementation with code for your data type.
  */
 class DashboardRecyclerViewAdapter(
-    private val values: List<Int>
+    private val values: List<Int?>
 ) : RecyclerView.Adapter<DashboardRecyclerViewAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {

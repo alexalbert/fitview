@@ -10,34 +10,32 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.aa.fitview.*
-import com.aa.fitview.placeholder.PlaceholderContent
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.ThreadMode
 
 import org.greenrobot.eventbus.Subscribe
 
-
-
-
-/**
- * A fragment representing a list of Items.
- */
 class DashboardFragment : Fragment() {
 
     private var columnCount = 1
     lateinit var savedView: RecyclerView
+    private var isCreated = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        EventBus.getDefault().register(this)
+        isCreated = true
+
         arguments?.let {
             columnCount = it.getInt(ARG_COLUMN_COUNT)
         }
-        EventBus.getDefault().register(this);
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        isCreated = false
         EventBus.getDefault().unregister(this);
     }
 
@@ -47,7 +45,6 @@ class DashboardFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_item_list, container, false)
 
-        val points = Signin.getFitData(requireContext(), googleAccount)
         // Set the adapter
         if (view is RecyclerView) {
             with(view) {
@@ -59,13 +56,15 @@ class DashboardFragment : Fragment() {
             }
             savedView = view
         }
+        FitData.getFitData(requireContext(), Request.BYDAY)
         return view
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onMessageEvent(event: Messages.FitResult?) {
+        if (!isCreated) return
         Log.i(TAG, "Message received")
-        savedView.adapter = DashboardRecyclerViewAdapter(event!!.points)
+        savedView.adapter = DashboardRecyclerViewAdapter(FitData.steps)
     }
 
     companion object {

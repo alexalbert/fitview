@@ -8,8 +8,6 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.aa.fitview.R
-import com.aa.fitview.Signin
 import com.aa.fitview.databinding.FragmentHomeBinding
 
 class HomeFragment : Fragment() {
