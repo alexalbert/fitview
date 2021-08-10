@@ -3,6 +3,7 @@ package com.aa.fitview
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import com.aa.fitview.DataType.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -12,20 +13,28 @@ import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
-import kotlinx.coroutines.selects.select
 import org.greenrobot.eventbus.EventBus
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+
 val TAG = "TAGfitview"
 
-enum class Request {
-    BYMONTH, BYDAY
+enum class Period {
+    MONTH, WEEK, DAY
 }
 enum class DataType {
     STEPS, DISTANCE, TIME
+}
+
+class Data {
+    val steps = ArrayList<Int?>()
+    val distances = ArrayList<Float?>()
+    val times = ArrayList<Int?>()
+    val speeds = ArrayList<Int?>()
+    val lengths = ArrayList<Float?>()
 }
 
 class FitData {
@@ -35,11 +44,9 @@ class FitData {
         var client: GoogleSignInClient? = null
         var account : GoogleSignInAccount? = null
 
-        val steps = ArrayList<Int?>()
-        val distances = ArrayList<Int?>()
-        val times = ArrayList<Int?>()
-        val speeds = ArrayList<Int?>()
-        val lengths = ArrayList<Float?>()
+        val dayData = Data()
+        val weekData = Data()
+        val monthData = Data()
 
         private fun signIn(context: Context): GoogleSignInAccount {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -77,10 +84,29 @@ class FitData {
             client?.signOut()
         }
 
-        fun getFitData(context: Context, request: Request) {
-            if (steps.size != 0)
+        fun getFitData(context: Context, period: Period, dataType: com.aa.fitview.DataType) {
+            var done = false
+            when(period) {
+                Period.DAY -> when(dataType) {
+                    STEPS, DISTANCE -> done = dayData.steps.size != 0
+                    TIME -> done = dayData.times.size != 0
+                }
+                Period.WEEK -> when(dataType) {
+                    STEPS, DISTANCE -> done = weekData.steps.size != 0
+                    TIME -> done = weekData.times.size != 0
+                }
+                Period.MONTH -> when(dataType) {
+                    STEPS, DISTANCE -> done = monthData.steps.size != 0
+                    TIME -> done = monthData.times.size != 0
+                }
+            }
+
+            if (done)
             {
                 EventBus.getDefault().post(Messages.FitResult())
+
+                Log.d(TAG, "Data already present " + period + " " + dataType
+                )
                 return
             }
 
@@ -94,13 +120,21 @@ class FitData {
 
             var bucketByDays = 1
 
-            when(request) {
-                Request.BYDAY -> {
+            var data: Data? = null
+            when(period) {
+                Period.DAY -> {
                     start = end.minusMonths(1)
+                    data = dayData
                 }
-                Request.BYMONTH -> {
-                    start = end.minusYears(2)
+                Period.WEEK -> {
+                    start = end.minusYears(1)
+                    bucketByDays = 7
+                    data = weekData
+                }
+                Period.MONTH -> {
+                    start = end.minusYears(1)
                     bucketByDays = 30
+                    data = monthData
                 }
             }
 
@@ -109,16 +143,17 @@ class FitData {
 
 
             val readRequest = DataReadRequest.Builder()
-                .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
-                .aggregate(DataType.TYPE_DISTANCE_DELTA)
-                .aggregate(DataType.TYPE_MOVE_MINUTES)
                 .setTimeRange(startSeconds, endSeconds, TimeUnit.SECONDS)
                 .bucketByTime(bucketByDays, TimeUnit.DAYS)
-                .build()
+
+            when(dataType) {
+                STEPS, DISTANCE -> readRequest.aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+                TIME -> readRequest.aggregate(DataType.TYPE_MOVE_MINUTES)
+            }
 
             Log.d(TAG, "Start request")
             Fitness.getHistoryClient(context, account)
-                .readData(readRequest)
+                .readData(readRequest.build())
                 .addOnSuccessListener({ response ->
                     Log.i(TAG, "Buckets = " + response.buckets.size.toString())
                     for (bucket in response.buckets) {
@@ -131,23 +166,31 @@ class FitData {
                         for (dataset in bucket.dataSets) {
                             when(dataset.dataType.name) {
                                 "com.google.step_count.delta" -> {
-                                    step = dataset.dataPoints[0].getValue(Field.FIELD_STEPS).asInt()
-                                    steps.add(step)
-
+                                    if (dataset.dataPoints.size > 0) {
+                                        step = dataset.dataPoints[0].getValue(Field.FIELD_STEPS)
+                                            .asInt()
+                                        data.steps.add(step)
+                                    } else {
+                                        data.steps.add(0)
+                                    }
                                 }
 
-                                "com.google.distance.delta" -> {
-                                    distance = dataset.dataPoints[0].getValue(Field.FIELD_DISTANCE)
-                                        .asFloat().roundToInt()
-                                    distances.add(distance)
-                                }
+//                                "com.google.distance.delta" -> {
+//                                    if (dataset.dataPoints.size > 0) {
+//                                    distance = dataset.dataPoints[0].getValue(Field.FIELD_DISTANCE)
+//                                        .asFloat().roundToInt()
+//                                    data.distances.add(distance)
+//                                    } else {
+//                                        data.steps.add(0)
+//                                    }
+//                                }
 
                                 "com.google.active_minutes" -> {
                                     if (dataset.dataPoints.size > 0) {
                                         time = dataset.dataPoints[0].getValue(Field.FIELD_DURATION)
                                             .asInt()
                                     }
-                                    times.add(time)
+                                    data.times.add(time)
                                 }
                             }
 
@@ -160,20 +203,20 @@ class FitData {
 //                                points.add(steps)
 //                            }
                         }
-                        if (distance != null && time != null) {
-                            speeds.add((distance.toFloat() / time).roundToInt())
-                        } else {
-                            speeds.add(null)
-                        }
-                        lengths.add(distance!!.toFloat() / step!!)
+//                        if (distance != null && time != null) {
+//                            data.speeds.add((distance.toFloat() / time).roundToInt())
+//                        } else {
+//                            data.speeds.add(null)
+//                        }
+//                        data.lengths.add(distance!!.toFloat() / step!!)
 
                     }
                     Log.i(TAG, "OnSuccess()")
-                    Log.d(TAG, "Steps " + steps.toString())
-                    Log.d(TAG, "Distances " + distances.toString())
-                    Log.d(TAG, "Times " +  times.toString())
-                    Log.d(TAG, "Speed " + speeds.toString())
-                    Log.d(TAG, "Lenght " + lengths.toString())
+                    Log.d(TAG, "Steps " + data.steps.toString())
+                    Log.d(TAG, "Distances " + data.distances.toString())
+                    Log.d(TAG, "Times " +  data.times.toString())
+                    Log.d(TAG, "Speed " + data.speeds.toString())
+                    Log.d(TAG, "Lenght " + data.lengths.toString())
 
                     EventBus.getDefault().post(Messages.FitResult())
 

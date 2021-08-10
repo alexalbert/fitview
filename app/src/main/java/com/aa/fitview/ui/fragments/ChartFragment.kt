@@ -1,13 +1,15 @@
-package com.aa.fitview.ui.notifications
+package com.aa.fitview.ui.fragments
 
+import android.opengl.Visibility
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import com.aa.fitview.*
-import com.aa.fitview.databinding.FragmentNotificationsBinding
+import com.aa.fitview.databinding.FragmentChartBinding
 import com.anychart.AnyChart
 import com.anychart.AnyChartView
 import com.anychart.chart.common.dataentry.DataEntry
@@ -17,12 +19,9 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import org.greenrobot.eventbus.EventBus
 
+open class ChartFragment(private val period: Period) : Fragment() {
 
-
-
-class NotificationsFragment : Fragment() {
-
-    private var _binding: FragmentNotificationsBinding? = null
+    private var _binding: FragmentChartBinding? = null
     private var isCreated = false
     private lateinit var chartData: Cartesian
 
@@ -32,6 +31,7 @@ class NotificationsFragment : Fragment() {
 
     private lateinit var chart: AnyChartView
     private lateinit var dataType: DataType
+    private lateinit var progressBar: ProgressBar
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,7 +41,7 @@ class NotificationsFragment : Fragment() {
         EventBus.getDefault().register(this)
         isCreated = true
 
-        _binding = FragmentNotificationsBinding.inflate(inflater, container, false)
+        _binding = FragmentChartBinding.inflate(inflater, container, false)
         val root: View = binding.root
         chart = binding.chart
         chartData = AnyChart.column()
@@ -50,15 +50,20 @@ class NotificationsFragment : Fragment() {
         dataType = DataType.STEPS
 
         binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            binding.progressBar.visibility = View.VISIBLE
+
             when (checkedId) {
                 R.id.radioSteps -> dataType = DataType.STEPS
                 R.id.radioDistance -> dataType = DataType.DISTANCE
                 R.id.radioTime -> dataType = DataType.TIME
             }
+            FitData.getFitData(requireContext(), period, dataType)
             setData(dataType)
         }
 
-        FitData.getFitData(requireContext(), Request.BYDAY)
+        progressBar = binding.progressBar
+
+        FitData.getFitData(requireContext(), period, DataType.STEPS)
 
         return root
     }
@@ -75,7 +80,8 @@ class NotificationsFragment : Fragment() {
 
         Log.i(TAG, "Message received")
 
-        binding.progressBar.visibility = View.GONE
+        progressBar.visibility = View.GONE
+        Log.i(TAG, "Visibility=" + progressBar.visibility)
 
         setData(dataType)
 
@@ -85,20 +91,35 @@ class NotificationsFragment : Fragment() {
     }
 
     private fun setData(dataType: DataType) {
-        var data:  ArrayList<Int?> = FitData.steps
+        var periodData: Data? = null
+        periodData = when(period) {
+            Period.DAY -> FitData.dayData
+            Period.WEEK -> FitData.weekData
+            Period.MONTH -> FitData.monthData
+        }
+
+        var data:  ArrayList<Int?>? = null
         val entries =  ArrayList<ValueDataEntry>()
 
-        when (dataType) {
-            DataType.STEPS -> data = FitData.steps
-            DataType.DISTANCE -> data = FitData.distances
-            DataType.TIME -> data = FitData.times
+        data = when (dataType) {
+            DataType.STEPS, DataType.DISTANCE -> periodData.steps
+//            DataType.DISTANCE -> periodData.distances
+            DataType.TIME -> periodData.times
         }
 
         for ((i, point) in data.withIndex())
         {
-            entries.add(ValueDataEntry(i.toFloat(), point?.toFloat()))
+            when(dataType) {
+                DataType.DISTANCE ->
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point*0.7165f/1609))
+                DataType.TIME ->
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat()/60))  // Convert to hours
+                DataType.STEPS ->
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point/1000))  // Convert to 1000nds
+        }
         }
 
         chartData.data(entries as List<DataEntry>?)
+        chartData.xAxis(0).labels().format("{%value}{type:number, decimalsCount:0}");
     }
 }
