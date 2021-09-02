@@ -24,20 +24,20 @@
             android:id="@+id/radioDistance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Distance"
+            android:text="@string/distance"
             android:checked="true" />
 
         <RadioButton
             android:id="@+id/radioSteps"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Steps" />
+            android:text="@string/steps" />
 
         <RadioButton
             android:id="@+id/radioTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Time" />
+            android:text="@string/time" />
 
     </RadioGroup>
 
