@@ -21,17 +21,17 @@
         android:layout_marginTop="10dp">
 
         <RadioButton
-            android:id="@+id/radioSteps"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Steps"
-            android:checked="true"/>
-
-        <RadioButton
             android:id="@+id/radioDistance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Distance" />
+            android:text="Distance"
+            android:checked="true" />
+
+        <RadioButton
+            android:id="@+id/radioSteps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Steps" />
 
         <RadioButton
             android:id="@+id/radioTime"
