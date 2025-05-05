@@ -47,6 +47,17 @@ open class ChartFragment(private val period: Period) : Fragment() {
         chartData = AnyChart.column()
         chart.setChart(chartData)
 
+        chartData.tooltip()
+            .format("Value: {%Value}{numDecimals:0}")
+            .position("center-top")
+            .anchor("center-bottom")
+            .offsetX(0)
+            .offsetY(5)
+            .fontColor("Blue")
+            .fontSize(20)
+            .background("White")
+            .title(false)
+
         dataType = DataType.DISTANCE
 
         binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
