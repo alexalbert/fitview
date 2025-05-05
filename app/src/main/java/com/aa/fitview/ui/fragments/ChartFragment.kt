@@ -91,17 +91,15 @@ open class ChartFragment(private val period: Period) : Fragment() {
     }
 
     private fun setData(dataType: DataType) {
-        var periodData: Data? = null
-        periodData = when(period) {
+        val periodData = when(period) {
             Period.DAY -> FitData.dayData
             Period.WEEK -> FitData.weekData
             Period.MONTH -> FitData.monthData
         }
 
-        var data:  ArrayList<Int?>? = null
         val entries =  ArrayList<ValueDataEntry>()
 
-        data = when (dataType) {
+        val data = when (dataType) {
             DataType.STEPS, DataType.DISTANCE -> periodData.steps
 //            DataType.DISTANCE -> periodData.distances
             DataType.TIME -> periodData.times
@@ -116,10 +114,27 @@ open class ChartFragment(private val period: Period) : Fragment() {
                     entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat()/60))  // Convert to hours
                 DataType.STEPS ->
                     entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point/1000))  // Convert to 1000nds
-        }
+            }
         }
 
         chartData.data(entries as List<DataEntry>?)
-        chartData.xAxis(0).labels().format("{%value}{type:number, decimalsCount:0}");
+
+        chartData.yAxis(0).labels().fontWeight("bold").fontColor("red").fontSize(16)
+        chartData.xAxis(0).labels().fontWeight("bold").fontColor("red").fontSize(16)
+
+        when(period) {
+            Period.DAY, Period.WEEK ->
+                chartData.xAxis(0).labels().format("{%value}{type:number, decimalsCount:0}")
+
+            Period.MONTH ->
+                chartData.xAxis(0).labels().format(
+                    "function() {" +
+                            "var months = ['J','F','M','A','M','J','J','A','S','O','N','D'];" +
+                            "var now = new Date();" +
+                            "var monthIndex = (now.getMonth() + this.value) % 12;" +
+                            "return months[monthIndex];" +
+                            "}"
+                )
+        }
     }
 }
