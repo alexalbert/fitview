@@ -26,14 +26,14 @@ enum class Period {
     MONTH, WEEK, DAY
 }
 enum class DataType {
-    STEPS, DISTANCE, TIME
+    STEPS, DISTANCE, TIME, SPEED
 }
 
 class Data {
     val steps = ArrayList<Int?>()
-    val distances = ArrayList<Float?>()
+    val distances = ArrayList<Int?>()
     val times = ArrayList<Int?>()
-    val speeds = ArrayList<Int?>()
+    val speeds = ArrayList<Float?>()
     val lengths = ArrayList<Float?>()
 }
 
@@ -60,9 +60,11 @@ class FitData {
                 .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.TYPE_STEP_COUNT_CADENCE, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.TYPE_SPEED, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.TYPE_MOVE_MINUTES, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+                .addDataType(DataType.AGGREGATE_MOVE_MINUTES, FitnessOptions.ACCESS_READ)
                 .addDataType(DataType.AGGREGATE_MOVE_MINUTES, FitnessOptions.ACCESS_READ)
                 .build()
 
@@ -88,16 +90,22 @@ class FitData {
             var done = false
             when(period) {
                 Period.DAY -> when(dataType) {
-                    STEPS, DISTANCE -> done = dayData.steps.size != 0
+                    STEPS -> done = dayData.steps.size != 0
+                    DISTANCE -> done = dayData.distances.size != 0
                     TIME -> done = dayData.times.size != 0
+                    SPEED -> done = dayData.speeds.size != 0
                 }
                 Period.WEEK -> when(dataType) {
-                    STEPS, DISTANCE -> done = weekData.steps.size != 0
+                    STEPS -> done = weekData.steps.size != 0
+                    DISTANCE -> done = weekData.distances.size != 0
                     TIME -> done = weekData.times.size != 0
+                    SPEED -> done = weekData.speeds.size != 0
                 }
                 Period.MONTH -> when(dataType) {
-                    STEPS, DISTANCE -> done = monthData.steps.size != 0
+                    STEPS -> done = monthData.steps.size != 0
+                    DISTANCE -> done = monthData.distances.size != 0
                     TIME -> done = monthData.times.size != 0
+                    SPEED -> done = monthData.speeds.size != 0
                 }
             }
 
@@ -147,8 +155,10 @@ class FitData {
                 .bucketByTime(bucketByDays, TimeUnit.DAYS)
 
             when(dataType) {
-                STEPS, DISTANCE -> readRequest.aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+                DISTANCE -> readRequest.aggregate(DataType.TYPE_DISTANCE_DELTA)
+                STEPS -> readRequest.aggregate(DataType.TYPE_STEP_COUNT_DELTA)
                 TIME -> readRequest.aggregate(DataType.TYPE_MOVE_MINUTES)
+                SPEED -> readRequest.aggregate(DataType.TYPE_SPEED)
             }
 
             Log.d(TAG, "Start request")
@@ -160,8 +170,7 @@ class FitData {
                         var distance: Int? = null
                         var time: Int? = null
                         var step: Int? = null
-
-                        Log.i(TAG, "Datasets = " + bucket.dataSets.size.toString())
+                        var speed: Float? = null
 
                         for (dataset in bucket.dataSets) {
                             when(dataset.dataType.name) {
@@ -175,15 +184,15 @@ class FitData {
                                     }
                                 }
 
-//                                "com.google.distance.delta" -> {
-//                                    if (dataset.dataPoints.size > 0) {
-//                                    distance = dataset.dataPoints[0].getValue(Field.FIELD_DISTANCE)
-//                                        .asFloat().roundToInt()
-//                                    data.distances.add(distance)
-//                                    } else {
-//                                        data.steps.add(0)
-//                                    }
-//                                }
+                                "com.google.distance.delta" -> {
+                                    if (dataset.dataPoints.size > 0) {
+                                    distance = dataset.dataPoints[0].getValue(Field.FIELD_DISTANCE)
+                                        .asFloat().roundToInt()
+                                    data.distances.add(distance)
+                                    } else {
+                                        data.distances.add(0)
+                                    }
+                                }
 
                                 "com.google.active_minutes" -> {
                                     if (dataset.dataPoints.size > 0) {
@@ -191,6 +200,14 @@ class FitData {
                                             .asInt()
                                     }
                                     data.times.add(time)
+                                }
+
+                                "com.google.speed.summary" -> {
+                                    if (dataset.dataPoints.size > 0) {
+                                        speed = dataset.dataPoints[0].getValue(Field.FIELD_AVERAGE)
+                                            .asFloat()
+                                    }
+                                    data.speeds.add(speed)
                                 }
                             }
 

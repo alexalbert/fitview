@@ -6,4 +6,5 @@
     <string name="steps">Steps</string>
     <string name="distance">Distance</string>
     <string name="time">Time</string>
+    <string name="speed">Speed</string>
 </resources>

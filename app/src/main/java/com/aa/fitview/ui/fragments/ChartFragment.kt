@@ -47,7 +47,7 @@ open class ChartFragment(private val period: Period) : Fragment() {
         chartData = AnyChart.column()
         chart.setChart(chartData)
 
-        dataType = DataType.STEPS
+        dataType = DataType.DISTANCE
 
         binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
             binding.progressBar.visibility = View.VISIBLE
@@ -56,6 +56,7 @@ open class ChartFragment(private val period: Period) : Fragment() {
                 R.id.radioSteps -> dataType = DataType.STEPS
                 R.id.radioDistance -> dataType = DataType.DISTANCE
                 R.id.radioTime -> dataType = DataType.TIME
+                R.id.radioSpeed -> dataType = DataType.SPEED
             }
             FitData.getFitData(requireContext(), period, dataType)
             setData(dataType)
@@ -63,7 +64,7 @@ open class ChartFragment(private val period: Period) : Fragment() {
 
         progressBar = binding.progressBar
 
-        FitData.getFitData(requireContext(), period, DataType.STEPS)
+        FitData.getFitData(requireContext(), period, DataType.DISTANCE)
 
         return root
     }
@@ -100,20 +101,23 @@ open class ChartFragment(private val period: Period) : Fragment() {
         val entries =  ArrayList<ValueDataEntry>()
 
         val data = when (dataType) {
-            DataType.STEPS, DataType.DISTANCE -> periodData.steps
-//            DataType.DISTANCE -> periodData.distances
+            DataType.STEPS -> periodData.steps
+            DataType.DISTANCE -> periodData.distances
             DataType.TIME -> periodData.times
+            DataType.SPEED -> periodData.speeds
         }
 
         for ((i, point) in data.withIndex())
         {
             when(dataType) {
                 DataType.DISTANCE ->
-                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point*0.7165f/1609))
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat()/1609)) // Convert to miles
                 DataType.TIME ->
                     entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat()/60))  // Convert to hours
                 DataType.STEPS ->
-                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point/1000))  // Convert to 1000nds
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat()/1000))  // Convert to 1000nds
+                DataType.SPEED ->
+                    entries.add(ValueDataEntry(i.toFloat(), if (point == null) 0f else point.toFloat() * 2.23694 )) // Convert to from m/s to mi/h
             }
         }
 
