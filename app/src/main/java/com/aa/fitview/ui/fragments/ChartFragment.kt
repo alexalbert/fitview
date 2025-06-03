@@ -146,7 +146,7 @@ open class ChartFragment(private val period: Period) : Fragment() {
                     "function() {" +
                             "var months = ['J','F','M','A','M','J','J','A','S','O','N','D'];" +
                             "var now = new Date();" +
-                            "var monthIndex = (now.getMonth() + this.value) % 12;" +
+                            "var monthIndex = (now.getMonth() + this.index) % 12;" +
                             "return months[monthIndex];" +
                             "}"
                 )
